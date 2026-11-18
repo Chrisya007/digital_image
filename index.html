@@ -120,7 +120,7 @@
       position: relative;
       display: flex;
       flex-direction: column;
-      width: min(920px, 84svh, 100%);
+      width: min(920px, 100%);
       height: min(1000px, calc(100svh - 48px));
       min-height: min(790px, calc(100svh - 48px));
       padding: clamp(24px, 4.5vw, 56px);
@@ -1313,15 +1313,15 @@
           <figure class="diagram-board taped">
             <svg class="method-diagram is-active" data-diagram="ordered" viewBox="0 0 660 220" role="img" aria-labelledby="ordered-svg-title ordered-svg-desc">
               <title id="ordered-svg-title">A repeating Bayer threshold grid</title>
-              <desc id="ordered-svg-desc">A schematic four by four grid represents the repeating threshold pattern; no threshold values are shown.</desc>
+              <desc id="ordered-svg-desc">A schematic four by four grid uses repeating illustrative colors; it does not show Bayer threshold values.</desc>
               <rect x="202" y="12" width="256" height="196" rx="6" fill="#fffdf7" stroke="#456b76" stroke-width="2"/>
-              <g fill="#e9dfca" stroke="#456b76" stroke-width="2">
-                <rect x="218" y="28" width="52" height="38"/><rect x="274" y="28" width="52" height="38"/><rect x="330" y="28" width="52" height="38"/><rect x="386" y="28" width="52" height="38"/>
-                <rect x="218" y="70" width="52" height="38"/><rect x="274" y="70" width="52" height="38"/><rect x="330" y="70" width="52" height="38"/><rect x="386" y="70" width="52" height="38"/>
-                <rect x="218" y="112" width="52" height="38"/><rect x="274" y="112" width="52" height="38"/><rect x="330" y="112" width="52" height="38"/><rect x="386" y="112" width="52" height="38"/>
-                <rect x="218" y="154" width="52" height="38"/><rect x="274" y="154" width="52" height="38"/><rect x="330" y="154" width="52" height="38"/><rect x="386" y="154" width="52" height="38"/>
+              <g stroke="#456b76" stroke-width="2">
+                <rect x="218" y="28" width="52" height="38" fill="#456b76"/><rect x="274" y="28" width="52" height="38" fill="#d3ad55"/><rect x="330" y="28" width="52" height="38" fill="#456b76"/><rect x="386" y="28" width="52" height="38" fill="#d3ad55"/>
+                <rect x="218" y="70" width="52" height="38" fill="#d3ad55"/><rect x="274" y="70" width="52" height="38" fill="#456b76"/><rect x="330" y="70" width="52" height="38" fill="#d3ad55"/><rect x="386" y="70" width="52" height="38" fill="#456b76"/>
+                <rect x="218" y="112" width="52" height="38" fill="#456b76"/><rect x="274" y="112" width="52" height="38" fill="#d3ad55"/><rect x="330" y="112" width="52" height="38" fill="#456b76"/><rect x="386" y="112" width="52" height="38" fill="#d3ad55"/>
+                <rect x="218" y="154" width="52" height="38" fill="#d3ad55"/><rect x="274" y="154" width="52" height="38" fill="#456b76"/><rect x="330" y="154" width="52" height="38" fill="#d3ad55"/><rect x="386" y="154" width="52" height="38" fill="#456b76"/>
               </g>
-              <text x="330" y="218" fill="#263b3b" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Repeating threshold cells · schematic</text>
+              <text x="330" y="218" fill="#263b3b" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Illustrative repeating color pattern · schematic</text>
             </svg>
             <svg id="dither-diagram" class="method-diagram dither-svg" data-diagram="floyd" viewBox="0 0 660 220" role="img" aria-labelledby="dither-svg-title dither-svg-desc">
               <title id="dither-svg-title">Floyd-Steinberg error distribution</title>
@@ -1352,7 +1352,7 @@
                 <text x="395" y="54">7/16 e</text><text x="215" y="119">3/16 e</text><text x="328" y="121">5/16 e</text><text x="395" y="128">1/16 e</text>
               </g>
             </svg>
-            <figcaption>The selected method's diagram is shown here. The ordered grid is schematic; the Floyd-Steinberg view labels the four source weights.</figcaption>
+            <figcaption>The selected method's diagram is shown here. The ordered grid uses illustrative colors, not threshold values; the Floyd-Steinberg view labels the four source weights.</figcaption>
           </figure>
           <div class="page-foot">
             <div class="citation-stamp"><strong>Source stamp</strong> Robert W. Floyd &amp; Louis Steinberg, “An Adaptive Algorithm for Spatial Greyscale” (1976), Proceedings of the Society for Information Display, Vol. 17(2), pp. 75–77 · <a href="https://ieeexplore.ieee.org/" target="_blank" rel="noreferrer">IEEE Xplore · Bryce E. Bayer (1973)</a></div>
