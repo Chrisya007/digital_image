@@ -1,0 +1,1641 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9dfca">
+  <title>How Digital Images Work — A Pocket Field Journal</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f1e4;
+      --paper-deep: #eee3cf;
+      --ink: #263b3b;
+      --muted: #64726c;
+      --line: #c9c1ad;
+      --coral: #c66d58;
+      --blue: #456b76;
+      --green: #6f8064;
+      --yellow: #d3ad55;
+      --white: #fffdf7;
+      --shadow: 0 18px 55px rgb(46 48 38 / 16%);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(ellipse at 18% 20%, rgb(255 255 255 / 54%), transparent 42%),
+        repeating-linear-gradient(0deg, transparent 0 30px, rgb(82 106 102 / 5%) 31px 32px),
+        var(--paper-deep);
+    }
+
+    button,
+    select,
+    a {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible {
+      outline: 3px solid var(--coral);
+      outline-offset: 3px;
+    }
+
+    .chapter-tabs {
+      position: fixed;
+      z-index: 10;
+      top: 50%;
+      right: 0;
+      display: grid;
+      gap: 5px;
+      transform: translateY(-50%);
+    }
+
+    .chapter-tabs a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 118px;
+      padding: 9px 10px 9px 12px;
+      border: 1px solid rgb(38 59 59 / 20%);
+      border-right: 0;
+      border-radius: 9px 0 0 9px;
+      background: #e8d9b8;
+      box-shadow: -3px 3px 0 rgb(38 59 59 / 10%);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+
+    .chapter-tabs a:hover,
+    .chapter-tabs a[aria-current="location"] {
+      transform: translateX(-8px);
+      background: var(--white);
+    }
+
+    .chapter-tabs b {
+      color: var(--coral);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    main {
+      isolation: isolate;
+    }
+
+    .page {
+      display: grid;
+      min-height: 100svh;
+      height: 100svh;
+      place-items: center;
+      overflow-y: auto;
+      padding: 24px clamp(14px, 4vw, 56px);
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+
+    .sheet {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: min(920px, 84svh, 100%);
+      height: min(1000px, calc(100svh - 48px));
+      min-height: min(790px, calc(100svh - 48px));
+      padding: clamp(24px, 4.5vw, 56px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      border: 1px solid #d5cbb7;
+      border-radius: 5px;
+      background:
+        linear-gradient(90deg, transparent 0 48px, rgb(198 109 88 / 12%) 49px 50px, transparent 51px),
+        repeating-linear-gradient(0deg, transparent 0 31px, rgb(69 107 118 / 8%) 32px 33px),
+        var(--paper);
+      box-shadow: var(--shadow);
+      scrollbar-color: #aa9b79 transparent;
+      scrollbar-width: thin;
+    }
+
+    .sheet::after {
+      position: absolute;
+      top: 0;
+      right: 24px;
+      width: 1px;
+      height: 100%;
+      background: rgb(198 109 88 / 12%);
+      content: "";
+      pointer-events: none;
+    }
+
+    .sheet-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 20px;
+      padding-left: clamp(14px, 3vw, 32px);
+      padding-right: clamp(18px, 3vw, 38px);
+    }
+
+    .page-head,
+    .page-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .page-head {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .page-no {
+      color: var(--coral);
+      font-family: Georgia, serif;
+      font-size: 20px;
+      font-style: italic;
+      letter-spacing: 0;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--coral);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 600;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin-bottom: 12px;
+      font-size: clamp(42px, 7vw, 82px);
+      line-height: 0.98;
+      letter-spacing: -0.045em;
+    }
+
+    h2 {
+      max-width: 760px;
+      margin-bottom: 0;
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 1.02;
+      letter-spacing: -0.035em;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+
+    .lede {
+      max-width: 660px;
+      margin-bottom: 0;
+      color: #435856;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(18px, 2.2vw, 24px);
+      line-height: 1.45;
+    }
+
+    .intro-row,
+    .two-col,
+    .three-col,
+    .color-layout,
+    .compression-layout {
+      display: grid;
+      align-items: stretch;
+      gap: 18px;
+    }
+
+    .intro-row,
+    .two-col,
+    .color-layout,
+    .compression-layout {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .three-col {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .index-card,
+    .paper-card,
+    .mini-card {
+      position: relative;
+      padding: 18px 20px;
+      border: 1px solid #d5c6a9;
+      border-radius: 3px;
+      background: rgb(255 253 247 / 91%);
+      box-shadow: 4px 6px 0 rgb(55 66 54 / 9%);
+    }
+
+    .index-card {
+      align-self: start;
+      max-width: 390px;
+      transform: rotate(1deg);
+    }
+
+    .index-card::before,
+    .taped::before {
+      position: absolute;
+      top: -9px;
+      left: 50%;
+      width: 74px;
+      height: 18px;
+      transform: translateX(-50%) rotate(-2deg);
+      border: 1px solid rgb(103 112 89 / 18%);
+      background: rgb(220 197 132 / 66%);
+      content: "";
+    }
+
+    .index-card p,
+    .paper-card p,
+    .mini-card p {
+      margin-bottom: 0;
+      color: #415653;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .card-label,
+    .small-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--coral);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .taped {
+      position: relative;
+    }
+
+    .diagram-board {
+      position: relative;
+      padding: 24px;
+      border: 1px solid #c9bea8;
+      background: rgb(245 237 218 / 78%);
+      box-shadow: inset 0 0 0 5px rgb(255 255 255 / 30%);
+    }
+
+    .diagram-board figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    figure {
+      margin: 0;
+    }
+
+    svg {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .pixel-diagram {
+      width: 100%;
+      max-height: 320px;
+    }
+
+    .pixel-diagram .cells {
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: transform 240ms ease;
+    }
+
+    .pixel-diagram.is-zoomed .cells {
+      transform: scale(1.35);
+    }
+
+    .demo-row,
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-button,
+    .method-button {
+      min-height: 40px;
+      padding: 9px 13px;
+      border: 1px solid var(--ink);
+      border-radius: 3px;
+      background: var(--white);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .demo-button:hover,
+    .method-button:hover {
+      background: #f0dfb8;
+    }
+
+    .method-button[aria-pressed="true"] {
+      background: var(--ink);
+      color: var(--white);
+    }
+
+    .formula {
+      display: inline-block;
+      padding: 5px 9px;
+      border: 1px dashed #82908a;
+      border-radius: 2px;
+      background: #f4eddb;
+      color: var(--ink);
+      font-family: "Courier New", monospace;
+      font-size: clamp(13px, 1.7vw, 17px);
+      font-weight: 700;
+    }
+
+    .equation-line {
+      display: block;
+      width: max-content;
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 4px 6px;
+      font-size: clamp(10px, 0.8vw, 11px);
+      white-space: nowrap;
+    }
+
+    .fact-list,
+    .process-list {
+      margin: 0;
+      padding-left: 20px;
+      color: #405552;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .fact-list li + li,
+    .process-list li + li {
+      margin-top: 6px;
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-height: 112px;
+      padding: 15px;
+      border-left: 4px solid var(--blue);
+      background: rgb(255 253 247 / 84%);
+    }
+
+    .metric strong {
+      font-family: Georgia, serif;
+      font-size: clamp(19px, 2vw, 25px);
+      line-height: 1.1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .color-swatch {
+      display: block;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgb(38 59 59 / 22%);
+      border-radius: 50%;
+    }
+
+    .swatch-red { background: #ff0000; }
+    .swatch-green { background: #00ff00; }
+    .swatch-blue { background: #0000ff; }
+    .swatch-black { background: #000000; }
+    .swatch-white { background: #ffffff; }
+    .method-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .method-panel {
+      display: none;
+    }
+
+    .method-panel.is-active {
+      display: block;
+      animation: note-in 180ms ease-out;
+    }
+
+    .method-panel p {
+      margin-bottom: 10px;
+      color: #405552;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .method-panel p:last-child {
+      margin-bottom: 0;
+    }
+
+    .model-explanations {
+      display: grid;
+      gap: 12px;
+    }
+
+    .model-explanation {
+      padding: 14px 16px;
+    }
+
+    .model-explanation h3 {
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+
+    .model-explanation p {
+      margin-bottom: 0;
+      color: #405552;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .model-explanation .equation-line {
+      margin-top: 9px;
+    }
+
+    .color-interaction {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .color-picker {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .color-choice {
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      padding: 9px 4px;
+      border: 1px solid #c9bea8;
+      border-radius: 3px;
+      background: rgb(255 253 247 / 90%);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .color-choice:hover {
+      background: #f0dfb8;
+    }
+
+    .color-choice[aria-pressed="true"] {
+      border-color: var(--blue);
+      box-shadow: inset 0 0 0 2px var(--blue);
+    }
+
+    .coordinate-board {
+      padding: 18px;
+      border: 1px solid #d5c6a9;
+      background: #fffdf7;
+    }
+
+    .coordinate-list {
+      margin: 0;
+    }
+
+    .coordinate-list > div {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: 10px;
+      padding: 11px 0;
+      border-top: 1px solid #ddd3c1;
+    }
+
+    .coordinate-list dt {
+      color: var(--coral);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .coordinate-list dd {
+      margin: 0;
+      color: #405552;
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .method-diagram {
+      display: none;
+    }
+
+    .method-diagram.is-active {
+      display: block;
+    }
+
+    .k-control {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px dashed #82908a;
+      background: rgb(255 253 247 / 84%);
+    }
+
+    .k-control label {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .k-control select {
+      min-height: 38px;
+      padding: 6px 28px 6px 10px;
+      border: 1px solid var(--ink);
+      border-radius: 2px;
+      background: #fffdf7;
+      color: var(--ink);
+    }
+
+    .k-output {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .palette-preview {
+      display: grid;
+      min-height: 28px;
+      margin-top: 8px;
+      overflow: hidden;
+      border: 1px solid rgb(38 59 59 / 22%);
+      background: #fffdf7;
+    }
+
+    .palette-preview span {
+      min-width: 0;
+      background-repeat: no-repeat;
+    }
+
+    .process-steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      counter-reset: step;
+    }
+
+    .process-step {
+      min-height: 92px;
+      padding: 14px 12px 12px;
+      border: 1px solid #d4c8b2;
+      background: rgb(255 253 247 / 86%);
+      color: #405552;
+      font-size: 13px;
+      line-height: 1.45;
+      counter-increment: step;
+      text-align: left;
+    }
+
+    .process-step::before {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--coral);
+      content: counter(step, decimal-leading-zero);
+      font-family: Georgia, serif;
+      font-size: 17px;
+      font-style: italic;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .banding-demo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .gradient-strip {
+      height: 52px;
+      border: 1px solid rgb(38 59 59 / 20%);
+      background: linear-gradient(90deg, #283c71 0%, #5d76a4 24%, #9da2aa 52%, #d2a580 75%, #e8d7ac 100%);
+    }
+
+    .band-strip {
+      height: 52px;
+      border: 1px solid rgb(38 59 59 / 20%);
+      background: linear-gradient(90deg, #283c71 0 20%, #5d76a4 20% 40%, #9da2aa 40% 60%, #d2a580 60% 80%, #e8d7ac 80% 100%);
+    }
+
+    .strip-label {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .method-panel {
+      min-height: 92px;
+      padding: 13px 15px;
+      border: 1px solid #d5c6a9;
+      background: #fffdf7;
+    }
+
+    .dither-svg {
+      width: 100%;
+      max-height: 245px;
+    }
+
+    .dither-svg .error-arrow {
+      opacity: 1;
+    }
+
+    .compression-card {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      padding: 20px;
+      border: 1px solid #d5c6a9;
+      background: rgb(255 253 247 / 92%);
+    }
+
+    .compression-card h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0;
+    }
+
+    .tag {
+      padding: 4px 8px;
+      border: 1px solid currentColor;
+      border-radius: 99px;
+      color: var(--green);
+      font-family: "Trebuchet MS", sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .compression-card.jpeg .tag {
+      color: var(--coral);
+    }
+
+    .step-flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .step-flow span {
+      padding: 6px 8px;
+      border: 1px dashed #a9a28f;
+      background: #f5eedf;
+    }
+
+    .step-flow b {
+      color: var(--coral);
+    }
+
+    .page-foot {
+      margin-top: auto;
+      padding-top: 6px;
+    }
+
+    .citation-stamp {
+      max-width: 100%;
+      padding: 8px 11px;
+      border: 1px solid #a69266;
+      background: rgb(232 217 184 / 75%);
+      color: #42514b;
+      font-size: 10px;
+      line-height: 1.45;
+      transform: rotate(-1deg);
+    }
+
+    .citation-stamp strong {
+      margin-right: 6px;
+      color: var(--coral);
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .citation-stamp a {
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+
+    .page-link {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .page-link:hover {
+      text-decoration: underline;
+    }
+
+    .page-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .source-files {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      font-size: 11px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .source-files li + li {
+      margin-top: 4px;
+    }
+
+    .trail {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .trail-card {
+      position: relative;
+      padding: 13px 11px;
+      border: 1px solid #d3c4a6;
+      background: #fffdf7;
+      color: #405552;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .trail-card b {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--coral);
+      font-family: Georgia, serif;
+      font-size: 18px;
+    }
+
+    .glossary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .glossary span {
+      padding: 7px 10px;
+      border: 1px solid #b9b19e;
+      background: #f1e8d6;
+      color: #354c4b;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .cover-title {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(250px, 0.75fr);
+      align-items: center;
+      gap: clamp(18px, 4vw, 48px);
+    }
+
+    .cover-visual {
+      padding: 20px;
+      border: 1px solid #c9bea8;
+      background: #f1e8d6;
+      box-shadow: 7px 8px 0 rgb(55 66 54 / 10%);
+      transform: rotate(2deg);
+    }
+
+    .cover-visual figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .cover-grid {
+      width: 100%;
+    }
+
+    .start-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      width: fit-content;
+      padding: 12px 16px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .start-link:hover {
+      background: var(--blue);
+    }
+
+    .quiet {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @keyframes note-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 760px) {
+      .chapter-tabs {
+        top: 50%;
+        right: 0;
+        bottom: auto;
+        display: grid;
+        transform: translateY(-50%);
+      }
+
+      .chapter-tabs a {
+        width: 34px;
+        min-width: 34px;
+        min-height: 34px;
+        justify-content: center;
+        padding: 7px 5px;
+        border: 1px solid rgb(38 59 59 / 20%);
+        border-right: 0;
+        border-radius: 7px 0 0 7px;
+      }
+
+      .chapter-tabs a span {
+        display: none;
+      }
+
+      .chapter-tabs a:hover,
+      .chapter-tabs a[aria-current="location"] {
+        transform: translateX(-4px);
+      }
+
+      .page {
+        padding: 12px 42px 12px 10px;
+      }
+
+      .sheet {
+        height: calc(100svh - 24px);
+        min-height: calc(100svh - 24px);
+        padding: 22px 14px 22px 18px;
+      }
+
+      .sheet-inner {
+        gap: 15px;
+        padding: 0 10px 0 12px;
+      }
+
+      .intro-row,
+      .two-col,
+      .color-layout,
+      .compression-layout,
+      .cover-title {
+        grid-template-columns: 1fr;
+      }
+
+      .three-col {
+        grid-template-columns: 1fr;
+      }
+
+      .index-card {
+        max-width: none;
+      }
+
+      .cover-visual {
+        max-width: 360px;
+      }
+
+      .process-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .trail {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .page-foot {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-height: 850px) and (min-width: 761px) {
+      .page {
+        padding-top: 10px;
+        padding-bottom: 10px;
+      }
+
+      .sheet {
+        height: calc(100svh - 20px);
+        min-height: calc(100svh - 20px);
+        padding: 18px 44px;
+      }
+
+      .sheet-inner {
+        gap: 9px;
+      }
+
+      .index-card,
+      .paper-card,
+      .compression-card {
+        padding: 13px 16px;
+      }
+
+      .metric {
+        min-height: 84px;
+        padding: 10px;
+      }
+
+      .diagram-board {
+        padding: 12px;
+      }
+
+      .method-diagram {
+        width: auto;
+        height: 140px;
+        max-width: 100%;
+        margin-inline: auto;
+      }
+
+      .process-steps {
+        gap: 7px;
+      }
+
+      .process-step {
+        min-height: 74px;
+        padding: 10px 9px 9px;
+        font-size: 12px;
+      }
+
+      .process-step::before {
+        margin-bottom: 5px;
+      }
+
+      .diagram-board figcaption {
+        margin-top: 6px;
+        font-size: 11px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="chapter-tabs" aria-label="Journal chapters">
+    <a href="#cover" aria-label="Page 1: Cover"><b>01</b><span>Cover</span></a>
+    <a href="#pixels" aria-label="Page 2: The image is a grid"><b>02</b><span>Pixels</span></a>
+    <a href="#colors" aria-label="Page 3: Color spaces"><b>03</b><span>Color</span></a>
+    <a href="#palette" aria-label="Page 4: Color quantization"><b>04</b><span>Palette</span></a>
+    <a href="#dithering" aria-label="Page 5: Dithering"><b>05</b><span>Dithering</span></a>
+    <a href="#compression" aria-label="Page 6: Compression"><b>06</b><span>Files</span></a>
+    <a href="#trail" aria-label="Page 7: The image-making trail"><b>07</b><span>Trail</span></a>
+  </nav>
+
+  <main>
+    <section class="page" id="cover" aria-labelledby="cover-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>A pocket field journal</span><span class="page-no">01 / 07</span></div>
+          <div class="cover-title">
+            <div>
+              <p class="eyebrow">Pixels · color · quantization</p>
+              <h1 id="cover-title">How Digital Images Work</h1>
+              <p class="lede">A beginner's guide to the small pieces and choices behind a digital picture.</p>
+              <div class="index-card" style="margin-top:24px">
+                <span class="card-label">Field note</span>
+                <p>Follow one picture from its pixel grid, through color and palette choices, to the way its file is compressed.</p>
+              </div>
+              <a class="start-link" href="#pixels">Open the journal <span aria-hidden="true">→</span></a>
+            </div>
+            <figure class="cover-visual taped">
+              <svg class="cover-grid" viewBox="0 0 300 260" role="img" aria-labelledby="cover-svg-title cover-svg-desc">
+                <title id="cover-svg-title">A small colored pixel grid</title>
+                <desc id="cover-svg-desc">A simple grid of colored squares assembled into a geometric picture.</desc>
+                <rect x="20" y="20" width="260" height="220" rx="4" fill="#fffdf7" stroke="#263b3b" stroke-width="2"/>
+                <g stroke="#fffdf7" stroke-width="3">
+                  <rect x="36" y="36" width="48" height="48" fill="#456b76"/>
+                  <rect x="84" y="36" width="48" height="48" fill="#6f8064"/>
+                  <rect x="132" y="36" width="48" height="48" fill="#d3ad55"/>
+                  <rect x="180" y="36" width="48" height="48" fill="#c66d58"/>
+                  <rect x="228" y="36" width="36" height="48" fill="#456b76"/>
+                  <rect x="36" y="84" width="48" height="48" fill="#6f8064"/>
+                  <rect x="84" y="84" width="48" height="48" fill="#d3ad55"/>
+                  <rect x="132" y="84" width="48" height="48" fill="#c66d58"/>
+                  <rect x="180" y="84" width="48" height="48" fill="#456b76"/>
+                  <rect x="228" y="84" width="36" height="48" fill="#6f8064"/>
+                  <rect x="36" y="132" width="48" height="48" fill="#d3ad55"/>
+                  <rect x="84" y="132" width="48" height="48" fill="#c66d58"/>
+                  <rect x="132" y="132" width="48" height="48" fill="#456b76"/>
+                  <rect x="180" y="132" width="48" height="48" fill="#6f8064"/>
+                  <rect x="228" y="132" width="36" height="48" fill="#d3ad55"/>
+                  <rect x="36" y="180" width="48" height="44" fill="#c66d58"/>
+                  <rect x="84" y="180" width="48" height="44" fill="#456b76"/>
+                  <rect x="132" y="180" width="48" height="44" fill="#6f8064"/>
+                  <rect x="180" y="180" width="48" height="44" fill="#d3ad55"/>
+                  <rect x="228" y="180" width="36" height="44" fill="#c66d58"/>
+                </g>
+              </svg>
+              <figcaption>One picture, built from picture elements.</figcaption>
+            </figure>
+          </div>
+          <div class="page-foot">
+            <span class="quiet">Seven pages · one image-making trail</span>
+            <a class="page-link" href="#trail">Skip to the trail →</a>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page" id="pixels" aria-labelledby="pixels-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>01 · Picture elements</span><span class="page-no">02 / 07</span></div>
+          <p class="eyebrow">Start with the grid</p>
+          <h2 id="pixels-title">A picture is a grid</h2>
+          <div class="intro-row">
+            <div class="index-card">
+              <span class="card-label">Index card · pixels</span>
+              <p>A raster image is a two-dimensional grid of pixels sampled at discrete coordinates. Its spatial resolution is width by height. Zoom far into a low-resolution grid and square blocks become visible: pixelation.</p>
+            </div>
+            <figure class="diagram-board taped">
+              <svg id="pixel-grid" class="pixel-diagram" viewBox="0 0 420 180" role="img" aria-labelledby="pixel-svg-title pixel-svg-desc">
+                <title id="pixel-svg-title">A grid of pixels</title>
+                <desc id="pixel-svg-desc">Rectangular colored cells form a small raster-like grid.</desc>
+                <rect x="12" y="12" width="396" height="156" rx="4" fill="#fffdf7" stroke="#263b3b" stroke-width="2"/>
+                <g class="cells" stroke="#fffdf7" stroke-width="3">
+                  <rect x="24" y="24" width="48" height="32" fill="#456b76"/><rect x="72" y="24" width="48" height="32" fill="#456b76"/><rect x="120" y="24" width="48" height="32" fill="#6f8064"/><rect x="168" y="24" width="48" height="32" fill="#6f8064"/><rect x="216" y="24" width="48" height="32" fill="#d3ad55"/><rect x="264" y="24" width="48" height="32" fill="#d3ad55"/><rect x="312" y="24" width="48" height="32" fill="#c66d58"/><rect x="360" y="24" width="36" height="32" fill="#c66d58"/>
+                  <rect x="24" y="56" width="48" height="32" fill="#456b76"/><rect x="72" y="56" width="48" height="32" fill="#6f8064"/><rect x="120" y="56" width="48" height="32" fill="#6f8064"/><rect x="168" y="56" width="48" height="32" fill="#d3ad55"/><rect x="216" y="56" width="48" height="32" fill="#d3ad55"/><rect x="264" y="56" width="48" height="32" fill="#c66d58"/><rect x="312" y="56" width="48" height="32" fill="#c66d58"/><rect x="360" y="56" width="36" height="32" fill="#456b76"/>
+                  <rect x="24" y="88" width="48" height="32" fill="#6f8064"/><rect x="72" y="88" width="48" height="32" fill="#6f8064"/><rect x="120" y="88" width="48" height="32" fill="#d3ad55"/><rect x="168" y="88" width="48" height="32" fill="#d3ad55"/><rect x="216" y="88" width="48" height="32" fill="#c66d58"/><rect x="264" y="88" width="48" height="32" fill="#c66d58"/><rect x="312" y="88" width="48" height="32" fill="#456b76"/><rect x="360" y="88" width="36" height="32" fill="#456b76"/>
+                  <rect x="24" y="120" width="48" height="36" fill="#6f8064"/><rect x="72" y="120" width="48" height="36" fill="#d3ad55"/><rect x="120" y="120" width="48" height="36" fill="#d3ad55"/><rect x="168" y="120" width="48" height="36" fill="#c66d58"/><rect x="216" y="120" width="48" height="36" fill="#c66d58"/><rect x="264" y="120" width="48" height="36" fill="#456b76"/><rect x="312" y="120" width="48" height="36" fill="#456b76"/><rect x="360" y="120" width="36" height="36" fill="#6f8064"/>
+                </g>
+              </svg>
+              <figcaption>A schematic grid. Use the control to enlarge its cells.</figcaption>
+            </figure>
+          </div>
+          <div class="demo-row">
+            <button class="demo-button" id="zoom-grid" type="button" aria-pressed="false">Zoom the pixel grid</button>
+            <span class="formula">Bit depth: 2<sup>n</sup> levels</span>
+            <span class="formula">Size: Width × Height × Bits Per Pixel</span>
+          </div>
+          <div class="three-col">
+            <div class="metric"><strong>1920 × 1080</strong><span>2,073,600 pixels, roughly 2.07 megapixels</span></div>
+            <div class="metric"><strong>1-bit / 8-bit</strong><span>2 tones / 256 grayscale shades from 0 to 255</span></div>
+            <div class="metric"><strong>24-bit RGB</strong><span>Three 8-bit channels; 16,777,216 possible colors</span></div>
+          </div>
+          <p class="quiet">A 1000 × 1000 24-bit RGB image takes 3,000,000 bytes, approximately 2.86 MB, before compression.</p>
+          <div class="page-foot">
+            <div class="citation-stamp"><strong>Source stamp</strong> <a href="https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types" target="_blank" rel="noreferrer">MDN Web Docs</a> · Rafael C. Gonzalez &amp; Richard E. Woods, <cite>Digital Image Processing</cite>, 4th ed., Chapter 2.</div>
+            <nav class="page-nav" aria-label="Page navigation">
+              <a class="page-link" href="#cover">← Previous</a>
+              <a class="page-link" href="#colors">Next: color coordinates →</a>
+            </nav>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page" id="colors" aria-labelledby="colors-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>02 · Color coordinates</span><span class="page-no">03 / 07</span></div>
+          <p class="eyebrow">One color, different coordinates</p>
+          <h2 id="colors-title">Color has more than one address</h2>
+          <div class="color-layout">
+            <div class="model-explanations" aria-label="Color model explanations">
+              <section class="paper-card model-explanation">
+                <h3>RGB · light channels</h3>
+                <p>RGB is an additive color model for screens and camera sensors. Each pixel combines red, green, and blue light intensities from 0 to 255. RGB Euclidean distance does not necessarily match human perception.</p>
+              </section>
+              <section class="paper-card model-explanation">
+                <h3>HSV · hue, saturation, value</h3>
+                <p>HSV rearranges the RGB cube into a cylindrical model. Hue is color type from 0° to 360°; saturation is purity from 0% gray to 100% vivid; value is brightness from 0% black to 100% full brightness.</p>
+              </section>
+              <section class="paper-card model-explanation">
+                <h3>CIELAB · light and opponent axes</h3>
+                <p>CIELAB is perceptually uniform. L* is lightness from 0 (black) to 100 (diffuse white); a* runs green to red, and b* runs blue to yellow.</p>
+                <p class="formula equation-line">ΔE=√((ΔL*)²+(Δa*)²+(Δb*)²)</p>
+              </section>
+            </div>
+            <div class="color-interaction">
+              <div class="color-picker" role="group" aria-label="Choose a color">
+                <button class="color-choice" type="button" data-color="red" aria-pressed="true" aria-label="Show red coordinates">
+                  <span class="color-swatch swatch-red" aria-hidden="true"></span><span>Red</span>
+                </button>
+                <button class="color-choice" type="button" data-color="green" aria-pressed="false" aria-label="Show green coordinates">
+                  <span class="color-swatch swatch-green" aria-hidden="true"></span><span>Green</span>
+                </button>
+                <button class="color-choice" type="button" data-color="blue" aria-pressed="false" aria-label="Show blue coordinates">
+                  <span class="color-swatch swatch-blue" aria-hidden="true"></span><span>Blue</span>
+                </button>
+                <button class="color-choice" type="button" data-color="black" aria-pressed="false" aria-label="Show black coordinates">
+                  <span class="color-swatch swatch-black" aria-hidden="true"></span><span>Black</span>
+                </button>
+                <button class="color-choice" type="button" data-color="white" aria-pressed="false" aria-label="Show white coordinates">
+                  <span class="color-swatch swatch-white" aria-hidden="true"></span><span>White</span>
+                </button>
+              </div>
+              <p class="quiet">Select a color to see its source-supported coordinates. Values not stated in the articles are identified rather than estimated.</p>
+              <div class="coordinate-board" id="coordinate-board" role="region" aria-live="polite" aria-labelledby="selected-color">
+                <h3 id="selected-color">Red coordinates</h3>
+                <dl class="coordinate-list">
+                  <div><dt>RGB</dt><dd id="coordinate-rgb">(255, 0, 0)</dd></div>
+                  <div><dt>HSV</dt><dd id="coordinate-hsv">H = 0°; S and V are not specified for this sample.</dd></div>
+                  <div><dt>CIELAB</dt><dd id="coordinate-lab">a* is positive (red); exact L* and b* values are not specified.</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div class="page-foot">
+            <div class="citation-stamp"><strong>Source stamp</strong> <a href="https://www.w3.org/TR/css-color-4/" target="_blank" rel="noreferrer">W3C CSS Color Module Level 4</a> · <a href="https://cie.co.at/" target="_blank" rel="noreferrer">International Commission on Illumination</a></div>
+            <nav class="page-nav" aria-label="Page navigation">
+              <a class="page-link" href="#pixels">← Previous</a>
+              <a class="page-link" href="#palette">Next: a smaller palette →</a>
+            </nav>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page" id="palette" aria-labelledby="palette-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>03 · Fewer colors</span><span class="page-no">04 / 07</span></div>
+          <p class="eyebrow">Choose representative colors</p>
+          <h2 id="palette-title">Making a smaller palette</h2>
+          <div class="two-col">
+            <div class="index-card">
+              <span class="card-label">Index card · quantization</span>
+              <p>Color quantization reduces the distinct colors in an image to a palette of representative colors. K-Means can select those colors from the pixels instead of choosing evenly spaced colors.</p>
+            </div>
+            <div class="paper-card">
+              <span class="small-label">Palette-size examples</span>
+              <div class="k-control">
+                <label for="palette-size">Choose K:</label>
+                <select id="palette-size">
+                  <option value="8">K = 8</option>
+                  <option value="16">K = 16</option>
+                  <option value="256">K = 256</option>
+                </select>
+                <span class="k-output" id="palette-output" aria-live="polite">The strip below shows 8 palette slots.</span>
+              </div>
+              <div class="palette-preview" id="palette-preview" role="img" aria-label="Illustrative strip containing 8 palette slots"></div>
+              <p class="quiet">Each tile represents one palette slot. Tile colors are illustrative, not calculated by K-Means.</p>
+              <p class="quiet" style="margin-top:10px">The source describes reducing 16,777,216 possible 24-bit colors to K representative colors.</p>
+            </div>
+          </div>
+          <div class="paper-card">
+            <span class="small-label">K-Means · the palette-making loop</span>
+            <div class="process-steps" aria-label="K-Means process">
+              <div class="process-step">Convert pixels from RGB to CIELAB.</div>
+              <div class="process-step">Choose K initial centroids.</div>
+              <div class="process-step">Assign each pixel to its nearest centroid by Euclidean distance.</div>
+              <div class="process-step">Update each centroid to its assigned-pixel mean.</div>
+              <div class="process-step">Repeat until centroids stop moving significantly.</div>
+              <div class="process-step">Replace each pixel with its centroid color.</div>
+            </div>
+          </div>
+          <div class="banding-demo">
+            <div>
+              <div class="gradient-strip" aria-label="Smooth gradient illustration"></div>
+              <p class="strip-label">Smooth tonal transition</p>
+            </div>
+            <div>
+              <div class="band-strip" aria-label="Illustration of a gradient split into bands"></div>
+              <p class="strip-label">A small palette can create color banding (posterization).</p>
+            </div>
+          </div>
+          <div class="page-foot">
+            <div class="citation-stamp"><strong>Source stamp</strong> <a href="https://scikit-learn.org/stable/modules/clustering.html#k-means" target="_blank" rel="noreferrer">scikit-learn · K-Means</a> · <a href="https://scikit-image.org/docs/stable/" target="_blank" rel="noreferrer">scikit-image</a></div>
+            <nav class="page-nav" aria-label="Page navigation">
+              <a class="page-link" href="#colors">← Previous</a>
+              <a class="page-link" href="#dithering">Next: soften the bands →</a>
+            </nav>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page" id="dithering" aria-labelledby="dithering-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>04 · Spatial patterns</span><span class="page-no">05 / 07</span></div>
+          <p class="eyebrow">Make a limited palette feel smoother</p>
+          <h2 id="dithering-title">Dots that suggest more colors</h2>
+          <div class="two-col">
+            <div class="index-card">
+              <span class="card-label">Index card · dithering</span>
+              <p>Dithering scatters available palette colors in fine spatial patterns. From a normal viewing distance, the eye blends them into intermediate shades, helping reduce visible banding.</p>
+            </div>
+            <div>
+              <div class="method-switcher" role="group" aria-label="Choose a dithering method">
+                <button class="method-button" type="button" data-method="ordered" aria-pressed="true">Ordered</button>
+                <button class="method-button" type="button" data-method="floyd" aria-pressed="false">Floyd-Steinberg</button>
+              </div>
+              <div class="method-panel is-active" id="method-ordered" role="region" aria-live="polite">
+                <p>Ordered dithering compares pixel intensity against a fixed, repeating threshold grid called a Bayer matrix. The source gives 2 × 2 and 4 × 4 examples.</p>
+                <p class="quiet">It is fast and produces a distinctive crosshatch texture.</p>
+              </div>
+              <div class="method-panel" id="method-floyd" role="region" aria-live="polite">
+                <p>Floyd-Steinberg quantizes a pixel, computes its rounding error, then shares that error with four neighboring unprocessed pixels.</p>
+                <p class="formula">e = original color − palette color</p>
+                <p class="quiet">The weights add to 1; the source says average local brightness is preserved without adding palette colors.</p>
+              </div>
+            </div>
+          </div>
+          <figure class="diagram-board taped">
+            <svg class="method-diagram is-active" data-diagram="ordered" viewBox="0 0 660 220" role="img" aria-labelledby="ordered-svg-title ordered-svg-desc">
+              <title id="ordered-svg-title">A repeating Bayer threshold grid</title>
+              <desc id="ordered-svg-desc">A schematic four by four grid represents the repeating threshold pattern; no threshold values are shown.</desc>
+              <rect x="202" y="12" width="256" height="196" rx="6" fill="#fffdf7" stroke="#456b76" stroke-width="2"/>
+              <g fill="#e9dfca" stroke="#456b76" stroke-width="2">
+                <rect x="218" y="28" width="52" height="38"/><rect x="274" y="28" width="52" height="38"/><rect x="330" y="28" width="52" height="38"/><rect x="386" y="28" width="52" height="38"/>
+                <rect x="218" y="70" width="52" height="38"/><rect x="274" y="70" width="52" height="38"/><rect x="330" y="70" width="52" height="38"/><rect x="386" y="70" width="52" height="38"/>
+                <rect x="218" y="112" width="52" height="38"/><rect x="274" y="112" width="52" height="38"/><rect x="330" y="112" width="52" height="38"/><rect x="386" y="112" width="52" height="38"/>
+                <rect x="218" y="154" width="52" height="38"/><rect x="274" y="154" width="52" height="38"/><rect x="330" y="154" width="52" height="38"/><rect x="386" y="154" width="52" height="38"/>
+              </g>
+              <text x="330" y="218" fill="#263b3b" font-family="Trebuchet MS, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Repeating threshold cells · schematic</text>
+            </svg>
+            <svg id="dither-diagram" class="method-diagram dither-svg" data-diagram="floyd" viewBox="0 0 660 220" role="img" aria-labelledby="dither-svg-title dither-svg-desc">
+              <title id="dither-svg-title">Floyd-Steinberg error distribution</title>
+              <desc id="dither-svg-desc">A current pixel and four neighboring pixels are labeled with their error distribution weights.</desc>
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L7,3 z" fill="#c66d58"/>
+                </marker>
+              </defs>
+              <g fill="#fffdf7" stroke="#456b76" stroke-width="2">
+                <rect x="70" y="35" width="110" height="64" rx="5"/>
+                <rect x="250" y="35" width="110" height="64" rx="5"/>
+                <rect x="430" y="35" width="110" height="64" rx="5"/>
+                <rect x="70" y="135" width="110" height="64" rx="5"/>
+                <rect x="250" y="135" width="110" height="64" rx="5"/>
+                <rect x="430" y="135" width="110" height="64" rx="5"/>
+              </g>
+              <g fill="#263b3b" font-family="Trebuchet MS, sans-serif" font-size="15" font-weight="700" text-anchor="middle">
+                <text x="125" y="72">Previous</text>
+                <text x="305" y="63">Current</text><text x="305" y="83">pixel (x, y)</text>
+                <text x="485" y="72">Right</text>
+                <text x="125" y="173">Bottom-left</text><text x="305" y="173">Bottom</text><text x="485" y="173">Bottom-right</text>
+              </g>
+              <g class="error-arrow" fill="none" stroke="#c66d58" stroke-width="3" marker-end="url(#arrowhead)">
+                <path d="M360 66 L425 66"/><path d="M260 98 L175 140"/><path d="M305 100 L305 130"/><path d="M350 98 L425 140"/>
+              </g>
+              <g fill="#c66d58" font-family="Trebuchet MS, sans-serif" font-size="14" font-weight="800" text-anchor="middle">
+                <text x="395" y="54">7/16 e</text><text x="215" y="119">3/16 e</text><text x="328" y="121">5/16 e</text><text x="395" y="128">1/16 e</text>
+              </g>
+            </svg>
+            <figcaption>The selected method's diagram is shown here. The ordered grid is schematic; the Floyd-Steinberg view labels the four source weights.</figcaption>
+          </figure>
+          <div class="page-foot">
+            <div class="citation-stamp"><strong>Source stamp</strong> Robert W. Floyd &amp; Louis Steinberg, “An Adaptive Algorithm for Spatial Greyscale” (1976), Proceedings of the Society for Information Display, Vol. 17(2), pp. 75–77 · <a href="https://ieeexplore.ieee.org/" target="_blank" rel="noreferrer">IEEE Xplore · Bryce E. Bayer (1973)</a></div>
+            <nav class="page-nav" aria-label="Page navigation">
+              <a class="page-link" href="#palette">← Previous</a>
+              <a class="page-link" href="#compression">Next: save the image →</a>
+            </nav>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page" id="compression" aria-labelledby="compression-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>05 · Smaller files</span><span class="page-no">06 / 07</span></div>
+          <p class="eyebrow">Two compression paths</p>
+          <h2 id="compression-title">Two ways to pack an image</h2>
+          <div class="index-card">
+            <span class="card-label">Index card · compression</span>
+            <p>Lossless compression allows exact bit-for-bit reconstruction. Lossy compression discards visual details. PNG and JPEG use different processes and suit different image content.</p>
+          </div>
+          <div class="compression-layout">
+            <section class="compression-card taped" aria-labelledby="png-heading">
+              <h3 id="png-heading">PNG <span class="tag">Lossless</span></h3>
+              <div class="step-flow" aria-label="PNG process"><span>Predict from left and upper pixels</span><b>→</b><span>Store residuals</span><b>→</b><span>DEFLATE</span></div>
+              <p class="quiet">PNG preserves every pixel value identically. Its DEFLATE step compresses repeated byte patterns. The source recommends PNG for sharp text, UI screenshots, diagrams, and quantized images with flat color regions or transparency.</p>
+              <figure>
+                <svg viewBox="0 0 300 72" role="img" aria-labelledby="png-svg-title">
+                  <title id="png-svg-title">Predictive filtering stores pixel differences</title>
+                  <rect x="16" y="18" width="60" height="40" rx="3" fill="#456b76"/>
+                  <rect x="91" y="18" width="60" height="40" rx="3" fill="#6f8064"/>
+                  <rect x="166" y="18" width="60" height="40" rx="3" fill="#d3ad55"/>
+                  <path d="M78 38h9m65 0h9" stroke="#c66d58" stroke-width="3"/>
+                  <text x="257" y="42" fill="#263b3b" font-size="13" font-family="Trebuchet MS">residual</text>
+                </svg>
+              </figure>
+            </section>
+            <section class="compression-card jpeg taped" aria-labelledby="jpeg-heading">
+              <h3 id="jpeg-heading">JPEG <span class="tag">Lossy</span></h3>
+              <div class="step-flow" aria-label="JPEG process"><span>YCbCr + chroma subsampling</span><b>→</b><span>DCT blocks</span><b>→</b><span>Frequency quantization</span></div>
+              <p class="quiet">JPEG is suited to natural photographs. It separates luma (Y) from chroma (Cb, Cr), halves color resolution horizontally and vertically, and applies the Discrete Cosine Transform (DCT) to 8 × 8 blocks to produce low- and high-frequency components. Frequency quantization rounds small coefficients to zero. Over-compressed sharp edges or text can show ringing and blocking artifacts.</p>
+              <figure>
+                <svg viewBox="0 0 300 72" role="img" aria-labelledby="jpeg-svg-title">
+                  <title id="jpeg-svg-title">An image divided into 8 by 8 pixel blocks</title>
+                  <rect x="14" y="8" width="112" height="56" fill="#f3e8ce" stroke="#263b3b" stroke-width="2"/>
+                  <path d="M28 8v56m14-56v56m14-56v56m14-56v56m14-56v56m14-56v56m14-56v56M14 15h112M14 22h112M14 29h112M14 36h112M14 43h112M14 50h112M14 57h112" stroke="#456b76" stroke-width="1"/>
+                  <text x="147" y="32" fill="#263b3b" font-size="14" font-family="Trebuchet MS" font-weight="700">8 × 8</text>
+                  <text x="147" y="51" fill="#64726c" font-size="12" font-family="Trebuchet MS">pixel blocks</text>
+                </svg>
+              </figure>
+            </section>
+          </div>
+          <div class="page-foot">
+            <div class="citation-stamp"><strong>Source stamp</strong> <a href="https://www.w3.org/TR/png/" target="_blank" rel="noreferrer">W3C PNG Specification</a> · <a href="https://www.itu.int/rec/T-REC-T.81" target="_blank" rel="noreferrer">ITU-T Recommendation T.81</a></div>
+            <nav class="page-nav" aria-label="Page navigation">
+              <a class="page-link" href="#dithering">← Previous</a>
+              <a class="page-link" href="#trail">Next: follow the trail →</a>
+            </nav>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page" id="trail" aria-labelledby="trail-title">
+      <article class="sheet">
+        <div class="sheet-inner">
+          <div class="page-head"><span>Field journal · end page</span><span class="page-no">07 / 07</span></div>
+          <p class="eyebrow">Keep the whole picture in view</p>
+          <h2 id="trail-title">The image-making trail</h2>
+          <div class="index-card">
+            <span class="card-label">Last index card</span>
+            <p>Begin with a grid of pixels. Give colors numerical coordinates. Reduce the palette when needed, use dithering to soften visible bands, and choose a compression path described by the source.</p>
+          </div>
+          <div class="trail" aria-label="The journal's five-part learning trail">
+            <div class="trail-card"><b>01</b>Pixels and bit depth</div>
+            <div class="trail-card"><b>02</b>Color coordinates</div>
+            <div class="trail-card"><b>03</b>Quantization and K-Means</div>
+            <div class="trail-card"><b>04</b>Dithering patterns</div>
+            <div class="trail-card"><b>05</b>PNG and JPEG</div>
+          </div>
+          <div>
+            <span class="small-label">Terms to keep in your pocket</span>
+            <div class="glossary">
+              <span>RGB</span><span>HSV</span><span>CIELAB</span><span>K-Means</span>
+              <span>Floyd-Steinberg</span><span>DEFLATE</span><span>DCT</span>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="paper-card">
+              <span class="small-label">Source shelf</span>
+              <ul class="source-files">
+                <li><a href="https://github.com/Chrisya007/digital-images-wiki/blob/main/wiki/sources/01_pixels_and_bit_depth.md" target="_blank" rel="noreferrer"><code>wiki/sources/01_pixels_and_bit_depth.md</code></a></li>
+                <li><a href="https://github.com/Chrisya007/digital-images-wiki/blob/main/wiki/sources/02_color_spaces_rgb_hsv_lab.md" target="_blank" rel="noreferrer"><code>wiki/sources/02_color_spaces_rgb_hsv_lab.md</code></a></li>
+                <li><a href="https://github.com/Chrisya007/digital-images-wiki/blob/main/wiki/sources/03_color_quantization_kmeans.md" target="_blank" rel="noreferrer"><code>wiki/sources/03_color_quantization_kmeans.md</code></a></li>
+                <li><a href="https://github.com/Chrisya007/digital-images-wiki/blob/main/wiki/sources/04_dithering_error_diffusion.md" target="_blank" rel="noreferrer"><code>wiki/sources/04_dithering_error_diffusion.md</code></a></li>
+                <li><a href="https://github.com/Chrisya007/digital-images-wiki/blob/main/wiki/sources/05_compression_png_vs_jpeg.md" target="_blank" rel="noreferrer"><code>wiki/sources/05_compression_png_vs_jpeg.md</code></a></li>
+              </ul>
+            </div>
+            <div class="paper-card">
+              <span class="small-label">Back to the beginning</span>
+              <p class="quiet">Return to the first page, or revisit a chapter from the tabs along the page edge.</p>
+              <a class="page-link" href="#cover">Return to cover ↑</a>
+            </div>
+          </div>
+          <div class="page-foot">
+            <div class="citation-stamp"><strong>Source shelf</strong> Original references are stamped on their related pages. <a href="https://github.com/Chrisya007/digital-images-wiki/blob/main/wiki/index.md" target="_blank" rel="noreferrer">Open the wiki catalog</a></div>
+            <span class="quiet">End of journal</span>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const journalPages = Array.from(document.querySelectorAll(".page"));
+    let requestedPageIndex = journalPages.findIndex((page) => `#${page.id}` === window.location.hash);
+    if (requestedPageIndex < 0) {
+      requestedPageIndex = null;
+    }
+
+    document.addEventListener("click", (event) => {
+      const link = event.target instanceof Element ? event.target.closest('a[href^="#"]') : null;
+      const linkedPageIndex = link ? journalPages.findIndex((page) => `#${page.id}` === link.hash) : -1;
+      requestedPageIndex = linkedPageIndex < 0 ? null : linkedPageIndex;
+    });
+
+    const clearRequestedPage = () => {
+      requestedPageIndex = null;
+    };
+    ["pointerdown", "wheel", "touchstart"].forEach((eventName) => {
+      document.addEventListener(eventName, clearRequestedPage, { passive: true });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+      if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea, [contenteditable='true']")) {
+        return;
+      }
+
+      const currentIndex = requestedPageIndex ?? journalPages.reduce((closestIndex, page, index) => {
+        const distance = Math.abs(page.getBoundingClientRect().top);
+        const closestDistance = Math.abs(journalPages[closestIndex].getBoundingClientRect().top);
+        return distance < closestDistance ? index : closestIndex;
+      }, 0);
+      const nextIndex = Math.max(0, Math.min(journalPages.length - 1, currentIndex + (event.key === "ArrowRight" ? 1 : -1)));
+      event.preventDefault();
+      requestedPageIndex = nextIndex;
+      if (nextIndex === currentIndex) {
+        return;
+      }
+
+      const nextPage = journalPages[nextIndex];
+      window.history.replaceState(window.history.state, "", `#${nextPage.id}`);
+      nextPage.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    const zoomButton = document.querySelector("#zoom-grid");
+    const pixelGrid = document.querySelector("#pixel-grid");
+
+    zoomButton.addEventListener("click", () => {
+      const zoomed = pixelGrid.classList.toggle("is-zoomed");
+      zoomButton.setAttribute("aria-pressed", String(zoomed));
+      zoomButton.textContent = zoomed ? "Reset the pixel grid" : "Zoom the pixel grid";
+    });
+
+    const sampleCoordinates = {
+      red: {
+        name: "Red",
+        rgb: "(255, 0, 0)",
+        hsv: "H = 0°; S and V are not specified for this sample.",
+        lab: "a* is positive (red); exact L* and b* values are not specified."
+      },
+      green: {
+        name: "Green",
+        rgb: "(0, 255, 0)",
+        hsv: "H = 120°; S and V are not specified for this sample.",
+        lab: "a* is negative (green); exact L* and b* values are not specified."
+      },
+      blue: {
+        name: "Blue",
+        rgb: "(0, 0, 255)",
+        hsv: "H = 240°; S and V are not specified for this sample.",
+        lab: "b* is negative (blue); exact L* and a* values are not specified."
+      },
+      black: {
+        name: "Black",
+        rgb: "(0, 0, 0)",
+        hsv: "V = 0%; H and S are not specified for this sample.",
+        lab: "L* = 0 (black); exact a* and b* values are not specified."
+      },
+      white: {
+        name: "White",
+        rgb: "(255, 255, 255)",
+        hsv: "V = 100%; H and S are not specified for this sample.",
+        lab: "L* = 100 (diffuse white); exact a* and b* values are not specified."
+      }
+    };
+
+    document.querySelectorAll(".color-choice").forEach((button) => {
+      button.addEventListener("click", () => {
+        const selected = sampleCoordinates[button.dataset.color];
+        document.querySelectorAll(".color-choice").forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        document.querySelector("#selected-color").textContent = `${selected.name} coordinates`;
+        document.querySelector("#coordinate-rgb").textContent = selected.rgb;
+        document.querySelector("#coordinate-hsv").textContent = selected.hsv;
+        document.querySelector("#coordinate-lab").textContent = selected.lab;
+      });
+    });
+
+    const paletteSelect = document.querySelector("#palette-size");
+    const paletteOutput = document.querySelector("#palette-output");
+    const palettePreview = document.querySelector("#palette-preview");
+    const paletteGradient = getComputedStyle(document.querySelector(".gradient-strip")).backgroundImage;
+    const paletteStops = Array.from(
+      paletteGradient.matchAll(/rgb\((\d+),\s*(\d+),\s*(\d+)\)\s*([\d.]+)%/g),
+      (match) => ({
+        position: Number(match[4]) / 100,
+        color: [Number(match[1]), Number(match[2]), Number(match[3])]
+      })
+    );
+    if (paletteStops.length < 2) {
+      throw new Error("Unable to read the palette preview colors.");
+    }
+    const samplePaletteColor = (position) => {
+      const upperIndex = Math.max(1, paletteStops.findIndex((stop) => stop.position >= position));
+      const lower = paletteStops[upperIndex - 1];
+      const upper = paletteStops[upperIndex];
+      const ratio = (position - lower.position) / (upper.position - lower.position);
+      const channels = lower.color.map((channel, index) =>
+        Math.round(channel + (upper.color[index] - channel) * ratio)
+      );
+      return `rgb(${channels.join(", ")})`;
+    };
+    const updatePalettePreview = () => {
+      const count = Number(paletteSelect.value);
+      paletteOutput.textContent = `The strip below shows ${count} palette slots.`;
+      palettePreview.style.gridTemplateColumns = `repeat(${count}, minmax(0, 1fr))`;
+      palettePreview.setAttribute("aria-label", `Illustrative strip containing ${count} palette slots`);
+      palettePreview.replaceChildren(...Array.from({ length: count }, (_, index) => {
+        const swatch = document.createElement("span");
+        swatch.setAttribute("aria-hidden", "true");
+        swatch.style.backgroundColor = samplePaletteColor((index + 0.5) / count);
+        return swatch;
+      }));
+    };
+    paletteSelect.addEventListener("change", updatePalettePreview);
+    updatePalettePreview();
+
+    document.querySelectorAll(".method-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        const selected = button.dataset.method;
+        document.querySelectorAll(".method-button").forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        document.querySelectorAll(".method-panel").forEach((panel) => {
+          panel.classList.toggle("is-active", panel.id === `method-${selected}`);
+        });
+        document.querySelectorAll(".method-diagram").forEach((diagram) => {
+          diagram.classList.toggle("is-active", diagram.dataset.diagram === selected);
+        });
+      });
+    });
+
+    const pageObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll(".chapter-tabs a").forEach((link) => {
+            if (link.hash === `#${entry.target.id}`) {
+              link.setAttribute("aria-current", "location");
+            } else {
+              link.removeAttribute("aria-current");
+            }
+          });
+        }
+      });
+    }, { threshold: 0.55 });
+
+    document.querySelectorAll(".page").forEach((page) => pageObserver.observe(page));
+  </script>
+</body>
+</html>
